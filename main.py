@@ -146,10 +146,18 @@ def build_forecast(case):
     ids = list(range(len(trophies)))
 
     slot_list = slots(case)
-    # Hours from the last read to the target, the horizon the band grows over.
-    horizon_days = float(case.get("horizon_minutes", 0)) / DAY_MINUTES
+    # The horizon the band grows over. A case states it in minutes, but a case
+    # that only names its target is read from the two stamps instead of being
+    # given a horizon of zero, which would claim a certainty the history has
+    # not earned and put the whole case's loss on rounding.
+    horizon_days = float(case.get("horizon_minutes") or 0) / DAY_MINUTES
     if horizon_days <= 0:
-        horizon_days = 1e-6
+        try:
+            horizon_days = hours_between(slot_list[-1], case["target"]) / 24.0
+        except Exception:
+            horizon_days = 0.0
+    if horizon_days <= 0:
+        horizon_days = 1.0 / DAY_MINUTES
 
     # Time of each read in hours from the first one, for the per-trophy fits.
     times_h = [0.0]
